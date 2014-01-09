@@ -1,0 +1,26 @@
+index.html 
+[] Successfully redirects based on authentication with Firebase
+
+server.js 
+[] Checks and redirects based on auth values
+   TODO: facebook API.
+
+game_server.js
+
+[] Handles Collision
+[] Handles score values
+
+impact/index.html 
+
+[]
+[]
+
+/impact/lib/game/entities/player.js
+
+[]
+[]
+
+/impact/lib/game/entities/levels/level1.js
+
+[]
+[]

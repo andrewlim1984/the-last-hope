@@ -1,58 +1,51 @@
-var express = require('express');
-var port = process.env.PORT || 5000;
-var app = express();    //create our app with express
-var server = require('http').createServer(app);
-var io = require('socket.io').listen(server);
+var Firebase = require('firebase');
+var express = require('express'),
+    port = 8081,
+    root = __dirname + '/impact/',
+    app = express();
+var io = require('socket.io');
+var game = require('./server/game_server.js'); 
+var server = require('http').createServer(app)
+    io = io.listen(server);
 
-
-app.configure(function() {
-	app.use(express.static(__dirname)); //sets the static file location
-	app.use(express.logger('dev')); //logs every request to the console
-	app.use(express.cookieParser());
-	app.use(express.bodyParser()); // pull information from html in POST
-	app.use(express.methodOverride()); //simulate DELETE and PUT
-	app.use(express.session({
-		secret: 'pariscongobomie'
-	}));
+app.configure(function(){
+  app.use(express.methodOverride());
+  app.use(express.bodyParser());
+ 
 });
 
-app.get('/', function(req, res){
-  res.sendfile(__dirname + '/index.html');
+
+app.use(express.static(__dirname));
+
+app.use('/signin', function( req, res, next ) { 
+  var user = req.body.user;
+  var pw = req.body.pw;
+
+  var fb = new Firebase('https://hrproj.firebaseio.com/Users/' + user + '/pw');
+    
+  fb.on('value', function( snapshot ) {
+    
+     if( snapshot.val() === pw ) {
+       next();
+     } else {
+       res.send('/'); 
+     }
+  });
+
+
 });
 
-server.listen(port, function() {
-	console.log("App listening on port " + port);
+app.use(function( req, res, next ) {
+  console.log("Passed");
+  res.send('/impact/');
 });
 
-var playerList = [];
 
-//setup classes
+server.listen(port);
 
-io.sockets.on('connection', function (socket) {
+game.setIO(io);
+io.sockets.on('connection', game.handler); 
 
-  socket.on('initializePlayer', function (newPlayerName) {
-    socket.clientName = newPlayerName;
-    playerList.push(newPlayerName);
-    io.sockets.emit('addPlayer', playerList, newPlayerName);
-  });
+// game.sync(game.sync);
 
-  socket.on('recieveData', function (positionx, positiony, currentAnimation, gameName) {
-    socket.broadcast.emit('playerMove', positionx, positiony, currentAnimation, gameName);
-
-  });
-
-  socket.on('spawnBullet', function(weaponType, gameName, angle) {
-    socket.broadcast.emit('spawnClientBullet', weaponType, gameName, angle);
-  });
-
-  socket.on('disconnect', function() {
-    delete playerList[socket.clientName];
-    for (var i in playerList) {
-      if (playerList[i] === socket.clientName) {
-        playerList.splice(i, 1)
-      }
-    }
-    socket.broadcast.emit('message', socket.clientName);
-    socket.broadcast.emit('netReplayer', playerList);
-  });
-});
+console.log('app listening on port', port);
