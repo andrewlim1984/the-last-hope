@@ -1,33 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <title>Impact Game</title>
+  <style type="text/css">
+    html,body {
+      background-color: #333;
+      color: #fff;
+      font-family: helvetica, arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      font-size: 12pt;
+    }
+    
+    #canvas {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      margin: auto;
+    }
+  </style>
+
+  <script type="text/javascript" src="lib/impact/impact.js"></script>
+  <script type="text/javascript" src="lib/game/main.js"></script>
 </head>
 <body>
-  <div class="normal">	
-	<h1> SIGN IN PLOX </h1>
-	<form class="auth">
-		<input class="user" type="text" placeholder="Username..." autofocus value="">
-		<input class="pw" type="Password" placeholder="Password..." value= "">
-		<input type="Submit">
-	</form> 
-  </div>
-  <div class="facebook">
-    <h1> OR SIGN IN WITH FACEBOOK </h1>
-    <p> Coming soon... </p>
-  </div>
-  <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+	<script src="./socket.io/socket.io.js"></script>
   <script>
-  	$(document).ready(function() {
-  	  $(".auth").submit(function() {
-  	  	event.preventDefault();
-  	  	var user = $(".user").val();
-  	  	var pw = $(".pw").val();
-  	  	$.post( "/signin",{'user': user, 'pw': pw}, function(data){
-          window.location = data; 
-        });
+	  var nameRand = Math.floor(Math.random()*100);
+	  var playerName = "player" + nameRand;
+	  var socket = io.connect();
 
-  	  })
-  	})
-  </script>
+	  socket.on('message', function(data) {
+      var player = ig.game.getEntitiesByType(EntityPlayer)[0];
+      if (player) {
+        player.messageBox = player.messageBox + '\n' + data + ' disconnected';
+      }
+    });
+
+    socket.on('playerMove', function(positionx, positiony, currentAnimation, thisGameName) {
+      var otherPlayer = ig.game.getEntitiesByType(EntityOtherPlayer);
+    	if (otherPlayer) {
+    		for (var i in otherPlayer) {
+    			if (thisGameName === otherPlayer[i].gameName) {
+    			    otherPlayer[i].pos.x = positionx;
+    			    otherPlayer[i].pos.y = positiony;
+    			    otherPlayer[i].animation = currentAnimation;
+    			}
+    		}
+    	}
+    });
+
+    socket.on('netReplayer', function(playerList) {
+      var netPlayers = ig.game.getEntitiesByType(EntityOtherPlayer);
+      if (netPlayers) {
+        for (var i in netPlayers) {
+		    netPlayers[i].kill();
+        }
+      }
+      for (var i in playerList) {
+        if (playerName !== playerList[i]) {
+        	ig.game.spawnEntity(EntityOtherPlayer, 160, 260, {gameName: playerList[i]});
+        }
+      }
+    });
+
+    socket.on('addPlayer', function(playerList, otherPlayerName) {
+      var player = ig.game.getEntitiesByType (EntityPlayer)[0];
+      player.messageBox = player.messageBox + '\n' + otherPlayerName + ' joined';
+      for (var i = 0; i < playerList.length; i++) {
+        if (player.gameName !== playerList[i]) {
+          ig.game.spawnEntity (EntityOtherPlayer, 160, 260, {gameName: playerList[i]});
+        }
+      }
+	  });
+
+    socket.on('spawnClientBullet', function(weaponType, gameName, animAngle) {
+      var netPlayers = ig.game.getEntitiesByType (EntityOtherPlayer);
+      if (netPlayers) {
+        for (var i = 0; i < netPlayers.length; i++) {
+          if (netPlayers[i].gameName === gameName) {
+            ig.game.spawnEntity (EntityNetBullet, netPlayers[i].pos.x + 30, netPlayers[i].pos.y + 30, {bulletType:weaponType, animAngle: animAngle});
+          }
+        }
+      }
+    })
+	</script>
+	<canvas id="canvas"></canvas>
 </body>
 </html>
